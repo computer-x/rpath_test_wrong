@@ -20,3 +20,19 @@
       则编译可以通过（即不需要指定aa的路径），但是执行时需要指定bb的路径（也不需要指定aa路径）
   （2）假如使用 gcc main.c -o test -L ./bb -Wl,-rpath ./bb -lbb  ======>  正确（不过最好使用绝对路径）
       则执行时不需要额外指定任何路径。
+
+# 第三版测试：rpath-link对于间接引用时链接路径的作用
+1、首先在编译libbb.so的时候需要把aa链接进去，即第二版1（2）中的命令，而不是第二版1（1）中的命令，
+  如果使用1（1），则libbb.so中没有aa的链接信息，bb和aa无关，最后编译可执行文件的时候，只能分别指定bb和aa的路径；===> rpath-link无用武之地
+  如果使用1（2），则libbb.so中有aa的链接信息，只不过aa的路径是未知的。 ====> 此时才需要在后续的编译中使用rpath-link） =======> 正确用法
+  （=== 这里收回bb的build.sh中对于第二个命令“make no sense”的注释 2333 ===）
+2、一种错误的用法：
+  我一开始以为是在编译bb的时候，通过rpath-link将aa路径保存进去，只对后续的编译起作用，而不对执行起作用。但这种理解的错误的
+  例如使用 gcc -o libbb.so -shared -fPIC bb.c -L ../aa -Wl,-rpath-link /home/chenxu1/some_test/rpath_test/aa -laa
+  这样是无效的。。
+3、在libbb.so中链接了aa、但又没有通过-rpath指定aa路径的情况下（并且没有设置aa的LD_LIBRARY_PATH）：
+  （1）假如使用 gcc main.c -o test -L ./bb -lbb
+      则编译不通过，会报错"libaa.so, needed by ./bb/libbb.so, not found"
+  （2）假如使用 gcc main.c -o test -L ./bb -lbb -Wl,-rpath-link /home/chenxu1/some_test/rpath_test/aa  =======>  正确用法
+      则编译可以通过，，但是在执行的时候，依然需要指定aa和bb的路径   ======>   这正是rpath-link所要达到的效果。
+      
